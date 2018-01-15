@@ -54,7 +54,7 @@ void print_map(void) {
  * Initialize program.
  **/
 void init(void) {
-  scanf(" %lu %lu", &width, &height);
+  scanf(" %u %u", &width, &height);
   initialize_map();
   start(width, height, map);
 }
@@ -71,7 +71,7 @@ void cleanup(void) {
  **/
 void iterate(void) {
   size_t steps;
-  while (scanf(" %lu", &steps) != EOF) {
+  while (scanf(" %u", &steps) != EOF) {
     run(steps);
     print_map();
   };
