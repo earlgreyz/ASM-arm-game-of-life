@@ -18,6 +18,17 @@
 .endm
 
 /**
+ * Creates new cell structure.
+ * @param dst - destination register
+ * @param neighbours - neighbours count
+ * @param state - cell current state
+ **/
+.macro make_cell dst, neighbours, state
+  lsl \dst, \neighbours, #8
+  add \dst, \state
+.endm
+
+/**
  * Checks loop condition.
  * @param counter: register
  * @param cond: value to check condition on
@@ -119,6 +130,41 @@ _count_neighbours_end:
  * @returns void
  **/
 _prepare_neighbours_map:
+  push {r4, r5, r6, lr}
+
+  @ y = height - 2
+  ldr r5, height
+  ldr r5, [r5]
+  sub r5, #2
+_prepare_loop_y:
+  @ x = width - 2
+  ldr r4, width
+  ldr r4, [r4]
+  sub r4, #2
+_prepare_loop_x:
+  @ neighbours_count = _count_neighbours(x, y)
+  mov r0, r4
+  mov r1, r5
+  bl _count_neighbours
+  @ Save neighbours_count for later
+  mov r6, r0
+  @ cell_ptr = _map_get(x, y)
+  mov r0, r4
+  mov r1, r5
+  bl _map_get
+  @ state = cell_state(*cell_ptr)
+  ldr r2, [r0]
+  cell_state r2, r2
+  @ new_cell = make_cell(neighbours_count, state)
+  make_cell r1, r6, r2
+  str r1, [r0]
+
+_prepare_loop_end:
+  check_loop r4, #1, _prepare_loop_x
+  check_loop r5, #1, _prepare_loop_y
+
+  @ Restore registers
+  pop {r4, r5, r6, lr}
   bx lr
 
 /**
