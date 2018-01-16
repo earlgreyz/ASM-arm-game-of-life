@@ -18,10 +18,19 @@
 .endm
 
 /**
+ * Extracts cell neighbours from the cell.
+ * @param dst: destination register
+ * @param value: cell value
+ **/
+.macro cell_neighbours dst, value
+  lsr \dst, \value, #8
+.endm
+
+/**
  * Creates new cell structure.
- * @param dst - destination register
- * @param neighbours - neighbours count
- * @param state - cell current state
+ * @param dst: destination register
+ * @param neighbours: neighbours count
+ * @param state: cell current state
  **/
 .macro make_cell dst, neighbours, state
   lsl \dst, \neighbours, #8
@@ -173,6 +182,56 @@ _prepare_loop_end:
  * - all other cells become DEAD
  **/
 _apply_neighbours_map:
+  push {r4, r5, ip, lr}
+
+  @ y = height - 2
+  ldr r5, height
+  ldr r5, [r5]
+  sub r5, #2
+_apply_loop_y:
+  @ x = width - 2
+  ldr r4, width
+  ldr r4, [r4]
+  sub r4, #2
+_apply_loop_x:
+  @ cell_ptr = _map_get(x, y)
+  mov r0, r4
+  mov r1, r5
+  bl _map_get
+  @ Extract cell state and neighhtbours
+  ldr r1, [r0]
+  cell_state r2, r1
+  cell_neighbours r1, r1
+  @ new_state = DEAD
+  eor r3, r3
+_apply_check:
+  @ if dead
+  cmp r2, #0
+  beq _apply_dead
+
+_apply_alive:
+  @ if neighbours < 2 then state = DEAD
+  cmp r1, #2
+  blt _apply_set_state
+  @ if neighbours > 3 then state = DEAD
+  cmp r1, #3
+  bgt _apply_set_state
+  @ otherwise state = ALIVE
+  mov r3, #1
+  b _apply_set_state
+
+_apply_dead:
+  @ if neighbours == 3 then state = ALIVE
+  cmp r1, #3
+  moveq r3, #1
+_apply_set_state:
+  str r3, [r0]
+
+_apply_loop_end:
+  check_loop r4, #1, _apply_loop_x
+  check_loop r5, #1, _apply_loop_y
+
+  pop {r4, r5, ip, lr}
   bx lr
 
 /**
@@ -180,6 +239,17 @@ _apply_neighbours_map:
  * @param steps number of times to run the simulation for.
  **/
 run:
+  push {r4, lr}
+  mov r4, r0
+_run_loop:
+  cmp r4, #0
+  ble _run_end
+  bl _prepare_neighbours_map
+  bl _apply_neighbours_map
+  sub r4, #1
+  b _run_loop
+_run_end:
+  pop {r4, lr}
   bx lr
 
 @ Labels for accessing variables
